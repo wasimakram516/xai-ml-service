@@ -22,3 +22,7 @@ data/oulad/
 # Allow final metrics only
 outputs/summaries/*
 !outputs/summaries/train_metrics.csv
+
+# Databases
+*.db
+
