@@ -1,0 +1,24 @@
+# Python cache
+__pycache__/
+*.pyc
+*.pyo
+
+# Virtual environment
+venv/
+
+# VS Code
+.vscode/
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Data (do NOT upload OULAD)
+data/oulad/
+
+# Logs & temp
+*.log
+
+# Allow final metrics only
+outputs/summaries/*
+!outputs/summaries/train_metrics.csv
