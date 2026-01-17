@@ -1,6 +1,8 @@
 import shap
 import joblib
 import numpy as np
+import matplotlib.pyplot as plt
+import os
 
 # ======================================================
 # LOAD MODELS (TREE-SHAP COMPATIBLE)
@@ -43,8 +45,6 @@ RISK_FEATURE_MEANINGS = {
     "final_activity": "Engagement near the end of the course"
 }
 
-# (You can later add FINAL_FEATURE_MEANINGS in same way)
-
 # ======================================================
 # UTILITY: BUILD HUMAN EXPLANATIONS
 # ======================================================
@@ -61,50 +61,104 @@ def build_explanations(shap_values, feature_names, feature_meanings, top_k=5):
             )
         })
 
-    # Sort by absolute impact
     explanations.sort(key=lambda x: abs(x["impact"]), reverse=True)
-
     return explanations[:top_k]
 
 # ======================================================
-# SHAP EXPLANATIONS — AT RISK
+# SHAP EXPLANATIONS — AT RISK (API)
 # ======================================================
 def explain_risk_shap(features: list):
     X = np.array([features])
-
     shap_values = risk_explainer.shap_values(X)[0]
     base_value = float(risk_explainer.expected_value)
 
-    top_factors = build_explanations(
-        shap_values=shap_values,
-        feature_names=risk_feature_names,
-        feature_meanings=RISK_FEATURE_MEANINGS
-    )
-
     return {
         "base_value": base_value,
-        "top_factors": top_factors,
+        "top_factors": build_explanations(
+            shap_values,
+            risk_feature_names,
+            RISK_FEATURE_MEANINGS
+        ),
         "raw_shap_values": shap_values.tolist()
     }
 
 # ======================================================
-# SHAP EXPLANATIONS — FINAL OUTCOME
+# SHAP EXPLANATIONS — FINAL OUTCOME (API)
 # ======================================================
 def explain_final_shap(features: list):
     X = np.array([features])
-
     shap_values = final_explainer.shap_values(X)[0]
     base_value = float(final_explainer.expected_value)
 
-    top_factors = build_explanations(
-        shap_values=shap_values,
-        feature_names=final_feature_names,
-        feature_meanings={},  # add later if needed
-        top_k=7
-    )
-
     return {
         "base_value": base_value,
-        "top_factors": top_factors,
+        "top_factors": build_explanations(
+            shap_values,
+            final_feature_names,
+            {},
+            top_k=7
+        ),
         "raw_shap_values": shap_values.tolist()
     }
+
+# =====================================================================
+# OFFLINE GLOBAL SHAP PLOTS (NOT USED BY API)
+# =====================================================================
+def generate_global_shap_plots(X_risk, X_final):
+    """
+    Offline-only function.
+    Call this from training or a notebook.
+    """
+    os.makedirs("outputs/figures", exist_ok=True)
+
+    # -----------------------
+    # EARLY RISK MODEL
+    # -----------------------
+    shap_vals_risk = risk_explainer.shap_values(X_risk)
+
+    shap.summary_plot(
+        shap_vals_risk,
+        X_risk,
+        feature_names=risk_feature_names,
+        show=False
+    )
+    plt.tight_layout()
+    plt.savefig("outputs/figures/early_shap_summary.png")
+    plt.close()
+
+    shap.summary_plot(
+        shap_vals_risk,
+        X_risk,
+        feature_names=risk_feature_names,
+        plot_type="bar",
+        show=False
+    )
+    plt.tight_layout()
+    plt.savefig("outputs/figures/early_shap_bar.png")
+    plt.close()
+
+    # -----------------------
+    # FINAL OUTCOME MODEL
+    # -----------------------
+    shap_vals_final = final_explainer.shap_values(X_final)
+
+    shap.summary_plot(
+        shap_vals_final,
+        X_final,
+        feature_names=final_feature_names,
+        show=False
+    )
+    plt.tight_layout()
+    plt.savefig("outputs/figures/final_shap_summary.png")
+    plt.close()
+
+    shap.summary_plot(
+        shap_vals_final,
+        X_final,
+        feature_names=final_feature_names,
+        plot_type="bar",
+        show=False
+    )
+    plt.tight_layout()
+    plt.savefig("outputs/figures/final_shap_bar.png")
+    plt.close()

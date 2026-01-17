@@ -5,11 +5,14 @@ import numpy as np
 import pandas as pd
 import joblib
 import optuna
+import matplotlib.pyplot as plt
 
 from xgboost import XGBClassifier
 from sklearn.metrics import (
     accuracy_score, f1_score, precision_score,
-    recall_score, roc_auc_score
+    recall_score, roc_auc_score,
+    roc_curve, precision_recall_curve,
+    confusion_matrix, ConfusionMatrixDisplay
 )
 from sklearn.model_selection import train_test_split
 
@@ -17,7 +20,7 @@ from app.utils.preprocess import load_oulad, build_full_features
 
 os.makedirs("model", exist_ok=True)
 os.makedirs("outputs/summaries", exist_ok=True)
-
+os.makedirs("outputs/figures", exist_ok=True)
 
 # ================================================================
 # Best Threshold Finder
@@ -33,6 +36,45 @@ def find_best_threshold(y_true, proba):
             best_f1, best_t = f1, t
 
     return best_t, best_f1
+
+
+# ================================================================
+# Plotting Utilities (OFFLINE — ML LAYER ONLY)
+# ================================================================
+def plot_roc(y_true, proba, name):
+    fpr, tpr, _ = roc_curve(y_true, proba)
+    plt.figure(figsize=(6, 5))
+    plt.plot(fpr, tpr, label="ROC")
+    plt.plot([0, 1], [0, 1], linestyle="--")
+    plt.xlabel("False Positive Rate")
+    plt.ylabel("True Positive Rate")
+    plt.title(f"ROC Curve — {name}")
+    plt.tight_layout()
+    plt.savefig(f"outputs/figures/{name}_roc.png")
+    plt.close()
+
+
+def plot_pr(y_true, proba, name):
+    precision, recall, _ = precision_recall_curve(y_true, proba)
+    plt.figure(figsize=(6, 5))
+    plt.plot(recall, precision)
+    plt.xlabel("Recall")
+    plt.ylabel("Precision")
+    plt.title(f"Precision–Recall — {name}")
+    plt.tight_layout()
+    plt.savefig(f"outputs/figures/{name}_pr.png")
+    plt.close()
+
+
+def plot_confusion(y_true, proba, threshold, name):
+    preds = (proba >= threshold).astype(int)
+    cm = confusion_matrix(y_true, preds)
+    disp = ConfusionMatrixDisplay(cm)
+    disp.plot(cmap="Blues", values_format="d")
+    plt.title(f"Confusion Matrix — {name}")
+    plt.tight_layout()
+    plt.savefig(f"outputs/figures/{name}_confusion.png")
+    plt.close()
 
 
 # ================================================================
@@ -73,11 +115,8 @@ def optimize_xgb(trial, X_train, y_train, X_valid, y_valid, scale_pos_weight):
 # ================================================================
 def train_single_model(X, y, model_name, n_trials=40):
 
-    print(f"\n🚀 Training {model_name} model")
+    print(f"\nTraining {model_name} model")
 
-    # -----------------------------------------
-    # Split
-    # -----------------------------------------
     X_train, X_valid, y_train, y_valid = train_test_split(
         X, y, test_size=0.2, random_state=42, stratify=y
     )
@@ -86,10 +125,7 @@ def train_single_model(X, y, model_name, n_trials=40):
     neg = np.sum(y_train == 0)
     spw = neg / pos if pos > 0 else 1
 
-    # -----------------------------------------
-    # Optuna Tuning
-    # -----------------------------------------
-    print("🔍 Running Optuna hyperparameter optimization...")
+    print("Running Optuna hyperparameter optimization...")
     study = optuna.create_study(direction="maximize")
     study.optimize(
         lambda trial: optimize_xgb(
@@ -100,11 +136,8 @@ def train_single_model(X, y, model_name, n_trials=40):
     )
 
     best_params = study.best_params
-    print("✨ Best Hyperparameters:", best_params)
+    print("Best Hyperparameters:", best_params)
 
-    # -----------------------------------------
-    # Final Model Training
-    # -----------------------------------------
     model = XGBClassifier(
         **best_params,
         random_state=42,
@@ -117,9 +150,6 @@ def train_single_model(X, y, model_name, n_trials=40):
 
     model.fit(X_train, y_train)
 
-    # -----------------------------------------
-    # Metrics
-    # -----------------------------------------
     preds = model.predict(X_valid)
     proba = model.predict_proba(X_valid)[:, 1]
 
@@ -131,7 +161,7 @@ def train_single_model(X, y, model_name, n_trials=40):
 
     best_t, best_f1 = find_best_threshold(y_valid.values, proba)
 
-    print("\n📊 Validation Metrics")
+    print("\nValidation Metrics")
     print(f"Accuracy@0.5: {acc:.4f}")
     print(f"F1@0.5:       {f1:.4f}")
     print(f"Precision:    {prec:.4f}")
@@ -140,9 +170,13 @@ def train_single_model(X, y, model_name, n_trials=40):
     print(f"Best Thresh:  {best_t:.2f}")
     print(f"F1@Best:      {best_f1:.4f}")
 
-    # -----------------------------------------
-    # Save Model + SHAP Copy
-    # -----------------------------------------
+    # ------------------------------------------------
+    # OFFLINE ML-LAYER EVALUATION PLOTS
+    # ------------------------------------------------
+    plot_roc(y_valid, proba, model_name)
+    plot_pr(y_valid, proba, model_name)
+    plot_confusion(y_valid, proba, best_t, model_name)
+
     joblib.dump(model, f"model/{model_name}.pkl")
     joblib.dump(model, f"model/{model_name}_xgb_shap.pkl")
 
@@ -162,40 +196,29 @@ def train_single_model(X, y, model_name, n_trials=40):
 # ================================================================
 def train_models():
 
-    print("\n📌 Loading OULAD dataset...")
+    print("\nLoading OULAD dataset...")
     student_info, reg, assess, vle, vle_meta, assess_meta = load_oulad()
 
-    # -----------------------------------------
-    # EARLY MODEL
-    # -----------------------------------------
-    print("\n📌 Building EARLY features...")
+    print("\nBuilding EARLY features...")
     X_early, y_early = build_full_features(
         student_info, reg, assess, vle, vle_meta, assess_meta,
         early_only=True
     )
-    print("Early feature shape:", X_early.shape)
 
     early_results = train_single_model(
         X_early, y_early, "at_risk_model", n_trials=40
     )
 
-    # -----------------------------------------
-    # FINAL MODEL
-    # -----------------------------------------
-    print("\n📌 Building FINAL features...")
+    print("\nBuilding FINAL features...")
     X_final, y_final = build_full_features(
         student_info, reg, assess, vle, vle_meta, assess_meta,
         early_only=False
     )
-    print("Final feature shape:", X_final.shape)
 
     final_results = train_single_model(
         X_final, y_final, "final_model", n_trials=40
     )
 
-    # -----------------------------------------
-    # SAVE METRICS
-    # -----------------------------------------
     summary = pd.DataFrame({
         "Model": ["Early Risk", "Final Outcome"],
         "Accuracy@0.5": [early_results["Accuracy@0.5"], final_results["Accuracy@0.5"]],
@@ -209,9 +232,9 @@ def train_models():
 
     summary.to_csv("outputs/summaries/train_metrics.csv", index=False)
 
-    print("\n🎉 FINAL RESULTS")
+    print("\nFINAL RESULTS")
     print(summary)
-    print("\nModels saved successfully.")
+    print("\nModels and figures saved successfully.")
 
 
 if __name__ == "__main__":
