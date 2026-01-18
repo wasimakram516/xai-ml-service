@@ -7,10 +7,10 @@ from app.models.teacher import Teacher
 from app.security import (
     hash_password,
     verify_password,
-    create_access_token
+    create_access_token,
 )
 
-router = APIRouter()
+router = APIRouter(prefix="/auth", tags=["Auth"])
 
 # ------------------------------------------------
 # DB Dependency
@@ -26,7 +26,7 @@ def get_db():
 # Schemas
 # ------------------------------------------------
 class RegisterRequest(BaseModel):
-    full_name: str 
+    full_name: str
     email: EmailStr
     password: str
 
@@ -40,7 +40,7 @@ class LoginRequest(BaseModel):
 @router.post("/register")
 def register_teacher(
     payload: RegisterRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     existing = db.query(Teacher).filter(
         Teacher.email == payload.email
@@ -49,13 +49,13 @@ def register_teacher(
     if existing:
         raise HTTPException(
             status_code=400,
-            detail="Teacher already exists"
+            detail="Teacher already exists",
         )
 
     teacher = Teacher(
         full_name=payload.full_name,
         email=payload.email,
-        hashed_password=hash_password(payload.password)
+        hashed_password=hash_password(payload.password),
     )
 
     db.add(teacher)
@@ -69,18 +69,19 @@ def register_teacher(
 @router.post("/login")
 def login_teacher(
     payload: LoginRequest,
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     teacher = db.query(Teacher).filter(
         Teacher.email == payload.email
     ).first()
 
     if not teacher or not verify_password(
-        payload.password, teacher.hashed_password
+        payload.password,
+        teacher.hashed_password,
     ):
         raise HTTPException(
             status_code=401,
-            detail="Invalid credentials"
+            detail="Invalid credentials",
         )
 
     token = create_access_token(
@@ -89,5 +90,5 @@ def login_teacher(
 
     return {
         "access_token": token,
-        "token_type": "bearer"
+        "token_type": "bearer",
     }

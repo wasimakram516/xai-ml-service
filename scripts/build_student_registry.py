@@ -14,8 +14,25 @@ from app.utils.preprocess import load_oulad, build_full_features
 # CONFIG
 # ======================================================
 OUTPUT_PATH = "app/data/students_registry.json"
-MAX_STUDENTS = 200   # Maximum number of students to include
-RANDOM_SEED = 42     # For reproducibility
+MAX_STUDENTS = 1000
+RANDOM_SEED = 42
+
+# ======================================================
+# HELPERS
+# ======================================================
+def to_python(v):
+    if v is None:
+        return None
+    if isinstance(v, (np.integer,)):
+        return int(v)
+    if isinstance(v, (np.floating,)):
+        return None if np.isnan(v) else float(v)
+    return v
+
+
+def sanitize_list(values):
+    return [to_python(v) for v in values]
+
 
 # ======================================================
 # MAIN
@@ -25,22 +42,19 @@ def build_registry():
     student_info, reg, assess, vle, vle_meta, assess_meta = load_oulad()
 
     print("Building EARLY features...")
-    X_early, y_early = build_full_features(
+    X_early, _ = build_full_features(
         student_info, reg, assess, vle, vle_meta, assess_meta,
         early_only=True
     )
 
     print("Building FINAL features...")
-    X_final, y_final = build_full_features(
+    X_final, _ = build_full_features(
         student_info, reg, assess, vle, vle_meta, assess_meta,
         early_only=False
     )
 
-    assert len(X_early) == len(X_final), "Feature row mismatch"
+    assert len(X_early) == len(X_final)
 
-    # --------------------------------------------
-    # Select a reproducible subset of real students
-    # --------------------------------------------
     np.random.seed(RANDOM_SEED)
     indices = np.random.choice(
         len(X_early),
@@ -51,21 +65,44 @@ def build_registry():
     registry = {}
 
     for i, idx in enumerate(indices):
+        row = student_info.iloc[idx]
         student_key = f"STU_{i:04d}"
 
         registry[student_key] = {
-            "early_features": X_early.iloc[idx].tolist()
-            if hasattr(X_early, "iloc")
-            else X_early[idx].tolist(),
+            "student_id": student_key,
+            "oulad_id": to_python(row.get("id_student")),
+            "label": f"Student {i + 1}",
 
-            "final_features": X_final.iloc[idx].tolist()
-            if hasattr(X_final, "iloc")
-            else X_final[idx].tolist()
+            "demographics": {
+                "gender": to_python(row.get("gender")),
+                "age_band": to_python(row.get("age_band")),
+                "highest_education": to_python(row.get("highest_education")),
+                "region": to_python(row.get("region")),
+                "disability": to_python(row.get("disability")),
+            },
+
+            "stats": {
+                "num_assessments": to_python(row.get("num_of_prev_attempts", 0)),
+                "avg_score": to_python(row.get("studied_credits")),
+                "total_clicks": int(
+                    sum(v for v in X_early.iloc[idx].tolist() if isinstance(v, (int, float)))
+                ),
+                "engagement_variance": to_python(
+                    np.var(X_early.iloc[idx].tolist())
+                ),
+            },
+
+            "early_features": sanitize_list(
+                X_early.iloc[idx].tolist()
+            ),
+            "final_features": sanitize_list(
+                X_final.iloc[idx].tolist()
+            ),
         }
 
     os.makedirs(os.path.dirname(OUTPUT_PATH), exist_ok=True)
 
-    with open(OUTPUT_PATH, "w") as f:
+    with open(OUTPUT_PATH, "w", encoding="utf-8") as f:
         json.dump(registry, f, indent=2)
 
     print(f"Student registry created: {OUTPUT_PATH}")

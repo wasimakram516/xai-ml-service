@@ -6,12 +6,11 @@ from app.models.teacher import Teacher
 from app.security import hash_password, verify_password
 from app.dependencies.auth import get_current_teacher, get_db
 
-router = APIRouter()
+router = APIRouter(prefix="/teachers", tags=["Teachers"])
 
 # ---------------------------
 # Schemas
 # ---------------------------
-
 class TeacherProfileResponse(BaseModel):
     full_name: str
     email: EmailStr
@@ -29,7 +28,7 @@ class PasswordChangeRequest(BaseModel):
 # ---------------------------
 @router.get("/me", response_model=TeacherProfileResponse)
 def get_profile(
-    teacher: Teacher = Depends(get_current_teacher)
+    teacher: Teacher = Depends(get_current_teacher),
 ):
     return teacher
 
@@ -40,7 +39,7 @@ def get_profile(
 def update_profile(
     payload: TeacherUpdateRequest,
     teacher: Teacher = Depends(get_current_teacher),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     teacher.full_name = payload.full_name
     teacher.email = payload.email
@@ -57,10 +56,16 @@ def update_profile(
 def change_password(
     payload: PasswordChangeRequest,
     teacher: Teacher = Depends(get_current_teacher),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
-    if not verify_password(payload.old_password, teacher.hashed_password):
-        raise HTTPException(status_code=400, detail="Incorrect old password")
+    if not verify_password(
+        payload.old_password,
+        teacher.hashed_password,
+    ):
+        raise HTTPException(
+            status_code=400,
+            detail="Incorrect old password",
+        )
 
     teacher.hashed_password = hash_password(payload.new_password)
     db.commit()
@@ -73,7 +78,7 @@ def change_password(
 @router.delete("/me")
 def delete_account(
     teacher: Teacher = Depends(get_current_teacher),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
 ):
     db.delete(teacher)
     db.commit()
