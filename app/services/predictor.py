@@ -10,8 +10,11 @@ final_model = joblib.load("model/final_model.pkl")
 # ======================================================
 # THRESHOLDS (LOCKED FROM METRICS)
 # ======================================================
-RISK_THRESHOLD = 0.41
-FINAL_THRESHOLD = 0.51
+risk_meta = joblib.load("model/at_risk_model_metadata.pkl")
+final_meta = joblib.load("model/final_model_metadata.pkl")
+
+RISK_THRESHOLD = risk_meta["best_threshold"]
+FINAL_THRESHOLD = final_meta["best_threshold"]
 
 # ======================================================
 # FEATURE COUNTS (AUTHORITATIVE)

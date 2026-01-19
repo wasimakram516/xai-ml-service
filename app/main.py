@@ -42,4 +42,4 @@ def root():
 # ------------------------------------------------------
 app.include_router(auth.router)       # /auth/*
 app.include_router(students.router)   # /students/* (protected)
-app.include_router(teachers.router)   # /teachers/*
+app.include_router(teachers.router)   # /teachers/* (protected)

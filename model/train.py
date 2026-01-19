@@ -39,12 +39,12 @@ def find_best_threshold(y_true, proba):
 
 
 # ================================================================
-# Plotting Utilities (OFFLINE — ML LAYER ONLY)
+# Plotting Utilities
 # ================================================================
 def plot_roc(y_true, proba, name):
     fpr, tpr, _ = roc_curve(y_true, proba)
     plt.figure(figsize=(6, 5))
-    plt.plot(fpr, tpr, label="ROC")
+    plt.plot(fpr, tpr)
     plt.plot([0, 1], [0, 1], linestyle="--")
     plt.xlabel("False Positive Rate")
     plt.ylabel("True Positive Rate")
@@ -78,80 +78,109 @@ def plot_confusion(y_true, proba, threshold, name):
 
 
 # ================================================================
-# Optuna Optimization Objective
+# Optuna Optimization Objective (NO EARLY STOPPING)
 # ================================================================
-def optimize_xgb(trial, X_train, y_train, X_valid, y_valid, scale_pos_weight):
-
+def optimize_xgb(trial, X_train, y_train, X_valid, y_valid, spw):
     params = {
         "n_estimators": trial.suggest_int("n_estimators", 300, 800),
-        "max_depth": trial.suggest_int("max_depth", 4, 10),
-        "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.15),
-        "subsample": trial.suggest_float("subsample", 0.7, 1.0),
-        "colsample_bytree": trial.suggest_float("colsample_bytree", 0.7, 1.0),
+        "max_depth": trial.suggest_int("max_depth", 4, 9),
+        "learning_rate": trial.suggest_float("learning_rate", 0.01, 0.12),
+        "subsample": trial.suggest_float("subsample", 0.75, 1.0),
+        "colsample_bytree": trial.suggest_float("colsample_bytree", 0.75, 1.0),
         "gamma": trial.suggest_float("gamma", 0.0, 0.3),
         "min_child_weight": trial.suggest_int("min_child_weight", 1, 8),
         "reg_lambda": trial.suggest_float("reg_lambda", 0.5, 2.5),
+        "objective": "binary:logistic",
+        "eval_metric": "logloss",
+        "random_state": 42,
+        "n_jobs": -1
     }
 
-    model = XGBClassifier(
-        **params,
-        random_state=42,
-        n_jobs=-1,
-        scale_pos_weight=scale_pos_weight,
-        tree_method="hist",
-        eval_metric="logloss",
-        use_label_encoder=False
+    model = XGBClassifier(**params)
+
+    # FORCE NumPy (XGBoost 2.x safety)
+    X_train_np = X_train.values
+    y_train_np = y_train.values
+    X_valid_np = X_valid.values
+    y_valid_np = y_valid.values
+
+    model.fit(
+        X_train_np,
+        y_train_np,
+        eval_set=[(X_valid_np, y_valid_np)],
+        verbose=False
     )
 
-    model.fit(X_train, y_train)
+    # ALSO NumPy for predict
+    preds = model.predict(X_valid_np)
 
-    preds = model.predict(X_valid)
-    f1 = f1_score(y_valid, preds)
-    return f1
+    return f1_score(y_valid_np, preds)
 
 
 # ================================================================
-# Train a Single XGBoost Model (Early or Final)
+# Train a Single Model
 # ================================================================
 def train_single_model(X, y, model_name, n_trials=40):
 
     print(f"\nTraining {model_name} model")
 
-    X_train, X_valid, y_train, y_valid = train_test_split(
-        X, y, test_size=0.2, random_state=42, stratify=y
+    # ===============================
+    # SAVE FEATURES USED (IMPORTANT)
+    # ===============================
+    joblib.dump(
+        {
+            "columns": list(X.columns),
+            "n_features": X.shape[1]
+        },
+        f"model/{model_name}_features.pkl"
     )
 
-    pos = np.sum(y_train == 1)
-    neg = np.sum(y_train == 0)
-    spw = neg / pos if pos > 0 else 1
+    # Optional but VERY useful for SHAP/debugging
+    joblib.dump(
+        X,
+        f"model/{model_name}_features_full.pkl"
+    )
+
+    X_train, X_valid, y_train, y_valid = train_test_split(
+        X, y, test_size=0.2, stratify=y, random_state=42
+    )
+
+    spw = (y_train == 0).sum() / (y_train == 1).sum()
 
     print("Running Optuna hyperparameter optimization...")
     study = optuna.create_study(direction="maximize")
     study.optimize(
-        lambda trial: optimize_xgb(
-            trial, X_train, y_train, X_valid, y_valid, spw
-        ),
+        lambda t: optimize_xgb(t, X_train, y_train, X_valid, y_valid, spw),
         n_trials=n_trials,
         show_progress_bar=False
     )
 
-    best_params = study.best_params
-    print("Best Hyperparameters:", best_params)
+    print("Best Hyperparameters:", study.best_params)
 
     model = XGBClassifier(
-        **best_params,
+        **study.best_params,
         random_state=42,
         n_jobs=-1,
         scale_pos_weight=spw,
         tree_method="hist",
-        eval_metric="logloss",
-        use_label_encoder=False
+        eval_metric="logloss"
     )
 
-    model.fit(X_train, y_train)
+    # Force NumPy (XGBoost 2.x safety)
+    X_train_np = X_train.values
+    y_train_np = y_train.values
+    X_valid_np = X_valid.values
+    y_valid_np = y_valid.values
 
-    preds = model.predict(X_valid)
-    proba = model.predict_proba(X_valid)[:, 1]
+    model.fit(
+        X_train_np,
+        y_train_np,
+        eval_set=[(X_valid_np, y_valid_np)],
+        verbose=False
+    )
+
+    preds = model.predict(X_valid_np)
+    proba = model.predict_proba(X_valid_np)[:, 1]
 
     acc = accuracy_score(y_valid, preds)
     f1 = f1_score(y_valid, preds)
@@ -159,7 +188,7 @@ def train_single_model(X, y, model_name, n_trials=40):
     rec = recall_score(y_valid, preds)
     auc = roc_auc_score(y_valid, proba)
 
-    best_t, best_f1 = find_best_threshold(y_valid.values, proba)
+    best_t, best_f1 = find_best_threshold(y_valid, proba)
 
     print("\nValidation Metrics")
     print(f"Accuracy@0.5: {acc:.4f}")
@@ -170,15 +199,26 @@ def train_single_model(X, y, model_name, n_trials=40):
     print(f"Best Thresh:  {best_t:.2f}")
     print(f"F1@Best:      {best_f1:.4f}")
 
-    # ------------------------------------------------
-    # OFFLINE ML-LAYER EVALUATION PLOTS
-    # ------------------------------------------------
     plot_roc(y_valid, proba, model_name)
     plot_pr(y_valid, proba, model_name)
     plot_confusion(y_valid, proba, best_t, model_name)
 
     joblib.dump(model, f"model/{model_name}.pkl")
     joblib.dump(model, f"model/{model_name}_xgb_shap.pkl")
+
+    joblib.dump(
+        {
+            "best_threshold": best_t,
+            "metrics": {
+                "accuracy": acc,
+                "f1": f1,
+                "precision": prec,
+                "recall": rec,
+                "auc": auc
+            }
+        },
+        f"model/{model_name}_metadata.pkl"
+    )
 
     return {
         "Accuracy@0.5": acc,
@@ -197,27 +237,21 @@ def train_single_model(X, y, model_name, n_trials=40):
 def train_models():
 
     print("\nLoading OULAD dataset...")
-    student_info, reg, assess, vle, vle_meta, assess_meta = load_oulad()
+    student_info, reg, assess, vle, vle_meta, assess_meta, courses = load_oulad()
 
     print("\nBuilding EARLY features...")
     X_early, y_early = build_full_features(
-        student_info, reg, assess, vle, vle_meta, assess_meta,
-        early_only=True
+        student_info, reg, assess, vle, vle_meta, assess_meta, courses, early_only=True
     )
 
-    early_results = train_single_model(
-        X_early, y_early, "at_risk_model", n_trials=40
-    )
+    early_results = train_single_model(X_early, y_early, "at_risk_model")
 
     print("\nBuilding FINAL features...")
     X_final, y_final = build_full_features(
-        student_info, reg, assess, vle, vle_meta, assess_meta,
-        early_only=False
+        student_info, reg, assess, vle, vle_meta, assess_meta, courses, early_only=False
     )
 
-    final_results = train_single_model(
-        X_final, y_final, "final_model", n_trials=40
-    )
+    final_results = train_single_model(X_final, y_final, "final_model")
 
     summary = pd.DataFrame({
         "Model": ["Early Risk", "Final Outcome"],

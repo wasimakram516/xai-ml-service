@@ -39,17 +39,17 @@ def sanitize_list(values):
 # ======================================================
 def build_registry():
     print("Loading OULAD data...")
-    student_info, reg, assess, vle, vle_meta, assess_meta = load_oulad()
+    student_info, reg, assess, vle, vle_meta, assess_meta, courses = load_oulad()
 
     print("Building EARLY features...")
     X_early, _ = build_full_features(
-        student_info, reg, assess, vle, vle_meta, assess_meta,
+        student_info, reg, assess, vle, vle_meta, assess_meta, courses,
         early_only=True
     )
 
     print("Building FINAL features...")
     X_final, _ = build_full_features(
-        student_info, reg, assess, vle, vle_meta, assess_meta,
+        student_info, reg, assess, vle, vle_meta, assess_meta, courses,
         early_only=False
     )
 
