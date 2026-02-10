@@ -1,5 +1,6 @@
 import sys
 import os
+import joblib
 
 # ------------------------------------------------
 # Make app/ importable
@@ -11,32 +12,41 @@ from app.services.explainer import generate_global_shap_plots
 
 
 def main():
-    print("Loading OULAD dataset...")
-    student_info, reg, assess, vle, vle_meta, assess_meta, courses = load_oulad()
+    model_dir = os.environ.get("MODEL_DIR", "model")
+    early_cache = os.path.join(model_dir, "at_risk_model_features_full.pkl")
+    final_cache = os.path.join(model_dir, "final_model_features_full.pkl")
 
-    print("Building EARLY features...")
-    X_early, _ = build_full_features(
-        student_info,
-        reg,
-        assess,
-        vle,
-        vle_meta,
-        assess_meta,
-        courses,
-        early_only=True
-    )
+    if os.path.exists(early_cache) and os.path.exists(final_cache):
+        print("Loading cached feature matrices from model/ ...")
+        X_early = joblib.load(early_cache)
+        X_final = joblib.load(final_cache)
+    else:
+        print("Cached features not found. Rebuilding from OULAD...")
+        student_info, reg, assess, vle, vle_meta, assess_meta, courses = load_oulad()
 
-    print("Building FINAL features...")
-    X_final, _ = build_full_features(
-        student_info,
-        reg,
-        assess,
-        vle,
-        vle_meta,
-        assess_meta,
-        courses,
-        early_only=False
-    )
+        print("Building EARLY features...")
+        X_early, _ = build_full_features(
+            student_info,
+            reg,
+            assess,
+            vle,
+            vle_meta,
+            assess_meta,
+            courses,
+            early_only=True
+        )
+
+        print("Building FINAL features...")
+        X_final, _ = build_full_features(
+            student_info,
+            reg,
+            assess,
+            vle,
+            vle_meta,
+            assess_meta,
+            courses,
+            early_only=False
+        )
 
     print("Generating SHAP figures...")
     generate_global_shap_plots(

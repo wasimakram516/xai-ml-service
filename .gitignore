@@ -19,10 +19,6 @@ data/oulad/
 # Logs & temp
 *.log
 
-# Allow final metrics only
-outputs/summaries/*
-!outputs/summaries/train_metrics.csv
-
 # Databases
 *.db
 

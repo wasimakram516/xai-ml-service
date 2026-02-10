@@ -1,17 +1,24 @@
 import joblib
 import numpy as np
+import os
+
+MODEL_DIR = os.environ.get("MODEL_DIR", "model")
+
+
+def model_path(name: str) -> str:
+    return os.path.join(MODEL_DIR, name)
 
 # ======================================================
 # LOAD MODELS
 # ======================================================
-risk_model = joblib.load("model/at_risk_model.pkl")
-final_model = joblib.load("model/final_model.pkl")
+risk_model = joblib.load(model_path("at_risk_model.pkl"))
+final_model = joblib.load(model_path("final_model.pkl"))
 
 # ======================================================
 # THRESHOLDS (LOCKED FROM METRICS)
 # ======================================================
-risk_meta = joblib.load("model/at_risk_model_metadata.pkl")
-final_meta = joblib.load("model/final_model_metadata.pkl")
+risk_meta = joblib.load(model_path("at_risk_model_metadata.pkl"))
+final_meta = joblib.load(model_path("final_model_metadata.pkl"))
 
 RISK_THRESHOLD = risk_meta["best_threshold"]
 FINAL_THRESHOLD = final_meta["best_threshold"]

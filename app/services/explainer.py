@@ -4,6 +4,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 import os
 
+MODEL_DIR = os.environ.get("MODEL_DIR", "model")
+
+
+def model_path(name: str) -> str:
+    return os.path.join(MODEL_DIR, name)
+
 # ======================================================
 # LOAD FEATURE METADATA (SAFE & EXPLICIT)
 # ======================================================
@@ -33,19 +39,19 @@ def load_feature_columns(path, model_name):
 # ======================================================
 # LOAD MODELS (TREE-SHAP COMPATIBLE)
 # ======================================================
-risk_model = joblib.load("model/at_risk_model_xgb_shap.pkl")
-final_model = joblib.load("model/final_model_xgb_shap.pkl")
+risk_model = joblib.load(model_path("at_risk_model_xgb_shap.pkl"))
+final_model = joblib.load(model_path("final_model_xgb_shap.pkl"))
 
 # ======================================================
 # LOAD FEATURE NAMES (AUTHORITATIVE)
 # ======================================================
 risk_feature_names = load_feature_columns(
-    "model/at_risk_model_features.pkl",
+    model_path("at_risk_model_features.pkl"),
     "Early Risk"
 )
 
 final_feature_names = load_feature_columns(
-    "model/final_model_features.pkl",
+    model_path("final_model_features.pkl"),
     "Final Outcome"
 )
 
@@ -196,6 +202,33 @@ def generate_global_shap_plots(X_risk, X_final):
     plt.savefig("outputs/figures/early_shap_bar.png", dpi=300)
     plt.close()
 
+    # Dependence plot for top global feature (early model)
+    risk_importance = np.abs(shap_vals_risk).mean(axis=0)
+    risk_top_idx = int(np.argmax(risk_importance))
+    shap.dependence_plot(
+        risk_top_idx,
+        shap_vals_risk,
+        X_risk,
+        feature_names=risk_feature_names,
+        show=False
+    )
+    plt.tight_layout()
+    plt.savefig("outputs/figures/early_shap_dependence_top1.png", dpi=300)
+    plt.close()
+
+    # Local example waterfall (early model)
+    early_sample = 0
+    early_expl = shap.Explanation(
+        values=shap_vals_risk[early_sample],
+        base_values=float(risk_explainer.expected_value),
+        data=X_risk[early_sample],
+        feature_names=risk_feature_names
+    )
+    shap.plots.waterfall(early_expl, max_display=10, show=False)
+    plt.tight_layout()
+    plt.savefig("outputs/figures/early_shap_waterfall_example.png", dpi=300)
+    plt.close()
+
     # -----------------------
     # FINAL OUTCOME MODEL
     # -----------------------
@@ -222,4 +255,31 @@ def generate_global_shap_plots(X_risk, X_final):
     )
     plt.tight_layout()
     plt.savefig("outputs/figures/final_shap_bar.png", dpi=300)
+    plt.close()
+
+    # Dependence plot for top global feature (final model)
+    final_importance = np.abs(shap_vals_final).mean(axis=0)
+    final_top_idx = int(np.argmax(final_importance))
+    shap.dependence_plot(
+        final_top_idx,
+        shap_vals_final,
+        X_final,
+        feature_names=final_feature_names,
+        show=False
+    )
+    plt.tight_layout()
+    plt.savefig("outputs/figures/final_shap_dependence_top1.png", dpi=300)
+    plt.close()
+
+    # Local example waterfall (final model)
+    final_sample = 0
+    final_expl = shap.Explanation(
+        values=shap_vals_final[final_sample],
+        base_values=float(final_explainer.expected_value),
+        data=X_final[final_sample],
+        feature_names=final_feature_names
+    )
+    shap.plots.waterfall(final_expl, max_display=10, show=False)
+    plt.tight_layout()
+    plt.savefig("outputs/figures/final_shap_waterfall_example.png", dpi=300)
     plt.close()

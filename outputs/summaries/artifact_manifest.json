@@ -1,0 +1,15 @@
+{
+  "counts": {
+    "figures_expected": 22,
+    "summaries_expected": 9,
+    "registry_expected": 1,
+    "figures_generated": 22,
+    "summaries_generated": 9
+  },
+  "missing": {
+    "figures": [],
+    "summaries": [],
+    "registry": []
+  },
+  "ok": true
+}

@@ -2,6 +2,8 @@ import sys
 import os
 import json
 import numpy as np
+import pandas as pd
+import joblib
 
 PROJECT_ROOT = os.path.abspath(
     os.path.join(os.path.dirname(__file__), "..")
@@ -38,22 +40,36 @@ def sanitize_list(values):
 # MAIN
 # ======================================================
 def build_registry():
-    print("Loading OULAD data...")
-    student_info, reg, assess, vle, vle_meta, assess_meta, courses = load_oulad()
+    print("Loading student info...")
+    student_info = pd.read_csv("data/oulad/studentInfo.csv")
 
-    print("Building EARLY features...")
-    X_early, _ = build_full_features(
-        student_info, reg, assess, vle, vle_meta, assess_meta, courses,
-        early_only=True
-    )
+    model_dir = os.environ.get("MODEL_DIR", "model")
+    early_cache = os.path.join(model_dir, "at_risk_model_features_full.pkl")
+    final_cache = os.path.join(model_dir, "final_model_features_full.pkl")
 
-    print("Building FINAL features...")
-    X_final, _ = build_full_features(
-        student_info, reg, assess, vle, vle_meta, assess_meta, courses,
-        early_only=False
-    )
+    if os.path.exists(early_cache) and os.path.exists(final_cache):
+        print("Loading cached feature matrices from model/ ...")
+        X_early = joblib.load(early_cache)
+        X_final = joblib.load(final_cache)
+    else:
+        print("Cached features not found. Building features from OULAD...")
+        _, reg, assess, vle, vle_meta, assess_meta, courses = load_oulad()
+
+        print("Building EARLY features...")
+        X_early, _ = build_full_features(
+            student_info, reg, assess, vle, vle_meta, assess_meta, courses,
+            early_only=True
+        )
+
+        print("Building FINAL features...")
+        X_final, _ = build_full_features(
+            student_info, reg, assess, vle, vle_meta, assess_meta, courses,
+            early_only=False
+        )
 
     assert len(X_early) == len(X_final)
+    assert len(student_info) == len(X_early), \
+        "student_info and features are misaligned. Regenerate models/features first."
 
     np.random.seed(RANDOM_SEED)
     indices = np.random.choice(
