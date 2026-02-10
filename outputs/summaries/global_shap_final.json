@@ -1,0 +1,96 @@
+{
+  "stage": "final",
+  "top_features": [
+    {
+      "feature": "num_assessments",
+      "mean_abs_shap": 1.6037464141845703,
+      "mean_shap": -0.19414210319519043,
+      "dominant_direction": "towards_class_0"
+    },
+    {
+      "feature": "active_days",
+      "mean_abs_shap": 1.4021120071411133,
+      "mean_shap": -0.9142920970916748,
+      "dominant_direction": "towards_class_0"
+    },
+    {
+      "feature": "avg_score",
+      "mean_abs_shap": 1.0460586547851562,
+      "mean_shap": -0.18924260139465332,
+      "dominant_direction": "towards_class_0"
+    },
+    {
+      "feature": "missing_assessments",
+      "mean_abs_shap": 0.9538159370422363,
+      "mean_shap": -0.2584693431854248,
+      "dominant_direction": "towards_class_0"
+    },
+    {
+      "feature": "last_score",
+      "mean_abs_shap": 0.38253721594810486,
+      "mean_shap": -0.08286480605602264,
+      "dominant_direction": "towards_class_0"
+    },
+    {
+      "feature": "avg_difficulty",
+      "mean_abs_shap": 0.35959020256996155,
+      "mean_shap": -0.010374201461672783,
+      "dominant_direction": "towards_class_0"
+    },
+    {
+      "feature": "week_28_clicks",
+      "mean_abs_shap": 0.21330265700817108,
+      "mean_shap": 0.057605549693107605,
+      "dominant_direction": "towards_class_1"
+    },
+    {
+      "feature": "timed_score_mean",
+      "mean_abs_shap": 0.19626253843307495,
+      "mean_shap": -0.021284980699419975,
+      "dominant_direction": "towards_class_0"
+    },
+    {
+      "feature": "clicks_oucontent",
+      "mean_abs_shap": 0.1326364129781723,
+      "mean_shap": -0.036965250968933105,
+      "dominant_direction": "towards_class_0"
+    },
+    {
+      "feature": "highest_education",
+      "mean_abs_shap": 0.13108760118484497,
+      "mean_shap": 0.011006570421159267,
+      "dominant_direction": "towards_class_1"
+    },
+    {
+      "feature": "week_0_clicks",
+      "mean_abs_shap": 0.12348547577857971,
+      "mean_shap": -0.036748602986335754,
+      "dominant_direction": "towards_class_0"
+    },
+    {
+      "feature": "week_27_clicks",
+      "mean_abs_shap": 0.11946799606084824,
+      "mean_shap": 0.046218037605285645,
+      "dominant_direction": "towards_class_1"
+    },
+    {
+      "feature": "clicks_resource",
+      "mean_abs_shap": 0.11769494414329529,
+      "mean_shap": -0.045924700796604156,
+      "dominant_direction": "towards_class_0"
+    },
+    {
+      "feature": "clicks_homepage",
+      "mean_abs_shap": 0.10440827161073685,
+      "mean_shap": -0.033973708748817444,
+      "dominant_direction": "towards_class_0"
+    },
+    {
+      "feature": "click_mean",
+      "mean_abs_shap": 0.09497589617967606,
+      "mean_shap": 0.016508791595697403,
+      "dominant_direction": "towards_class_1"
+    }
+  ],
+  "n_features": 79
+}

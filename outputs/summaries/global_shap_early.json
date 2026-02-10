@@ -1,0 +1,96 @@
+{
+  "stage": "early",
+  "top_features": [
+    {
+      "feature": "avg_score",
+      "mean_abs_shap": 0.4984305202960968,
+      "mean_shap": 0.03166978061199188,
+      "dominant_direction": "towards_class_1"
+    },
+    {
+      "feature": "week_0_clicks",
+      "mean_abs_shap": 0.36453837156295776,
+      "mean_shap": 0.0589081309735775,
+      "dominant_direction": "towards_class_1"
+    },
+    {
+      "feature": "week_2_clicks",
+      "mean_abs_shap": 0.22866444289684296,
+      "mean_shap": 0.019244112074375153,
+      "dominant_direction": "towards_class_1"
+    },
+    {
+      "feature": "highest_education",
+      "mean_abs_shap": 0.22253118455410004,
+      "mean_shap": 0.0014543430879712105,
+      "dominant_direction": "towards_class_1"
+    },
+    {
+      "feature": "week_3_clicks",
+      "mean_abs_shap": 0.21150968968868256,
+      "mean_shap": 0.0025545216631144285,
+      "dominant_direction": "towards_class_1"
+    },
+    {
+      "feature": "timed_score_mean",
+      "mean_abs_shap": 0.18204286694526672,
+      "mean_shap": 0.02424301579594612,
+      "dominant_direction": "towards_class_1"
+    },
+    {
+      "feature": "activity_diversity",
+      "mean_abs_shap": 0.1731141358613968,
+      "mean_shap": -0.011018699035048485,
+      "dominant_direction": "towards_class_0"
+    },
+    {
+      "feature": "early_click_volatility",
+      "mean_abs_shap": 0.14932949841022491,
+      "mean_shap": 0.05116754770278931,
+      "dominant_direction": "towards_class_1"
+    },
+    {
+      "feature": "week_1_clicks",
+      "mean_abs_shap": 0.14203032851219177,
+      "mean_shap": -0.007661210373044014,
+      "dominant_direction": "towards_class_0"
+    },
+    {
+      "feature": "gender",
+      "mean_abs_shap": 0.13190887868404388,
+      "mean_shap": 0.016913751140236855,
+      "dominant_direction": "towards_class_1"
+    },
+    {
+      "feature": "late_submissions",
+      "mean_abs_shap": 0.11563690751791,
+      "mean_shap": -0.013450467959046364,
+      "dominant_direction": "towards_class_0"
+    },
+    {
+      "feature": "max_gap",
+      "mean_abs_shap": 0.09186366945505142,
+      "mean_shap": 0.026925290003418922,
+      "dominant_direction": "towards_class_1"
+    },
+    {
+      "feature": "region_freq",
+      "mean_abs_shap": 0.08526864647865295,
+      "mean_shap": 0.00010261558054480702,
+      "dominant_direction": "towards_class_1"
+    },
+    {
+      "feature": "early_click_trend",
+      "mean_abs_shap": 0.07256710529327393,
+      "mean_shap": 0.012360746040940285,
+      "dominant_direction": "towards_class_1"
+    },
+    {
+      "feature": "longest_streak",
+      "mean_abs_shap": 0.06773565709590912,
+      "mean_shap": -0.0007898450712673366,
+      "dominant_direction": "towards_class_0"
+    }
+  ],
+  "n_features": 18
+}

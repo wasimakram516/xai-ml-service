@@ -37,6 +37,8 @@ EXPECTED_FIGURES = [
 
 EXPECTED_SUMMARIES = [
     "train_metrics.csv",
+    "global_shap_early.json",
+    "global_shap_final.json",
     "at_risk_model_classification_report_05.csv",
     "at_risk_model_classification_report_05.txt",
     "at_risk_model_classification_report_best.csv",

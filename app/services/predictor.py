@@ -8,6 +8,15 @@ MODEL_DIR = os.environ.get("MODEL_DIR", "model")
 def model_path(name: str) -> str:
     return os.path.join(MODEL_DIR, name)
 
+
+def confidence_band(prob: float, threshold: float) -> str:
+    margin = abs(prob - threshold)
+    if margin >= 0.25:
+        return "high"
+    if margin >= 0.10:
+        return "medium"
+    return "low"
+
 # ======================================================
 # LOAD MODELS
 # ======================================================
@@ -46,7 +55,8 @@ def predict_at_risk(features: list):
     return {
         "at_risk": pred,
         "probability": prob,
-        "threshold": RISK_THRESHOLD
+        "threshold": RISK_THRESHOLD,
+        "confidence": confidence_band(prob, RISK_THRESHOLD)
     }
 
 
@@ -66,5 +76,6 @@ def predict_final(features: list):
     return {
         "final_prediction": pred,
         "probability": prob,
-        "threshold": FINAL_THRESHOLD
+        "threshold": FINAL_THRESHOLD,
+        "confidence": confidence_band(prob, FINAL_THRESHOLD)
     }

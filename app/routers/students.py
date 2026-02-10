@@ -4,7 +4,7 @@ from fastapi import APIRouter, HTTPException, Query, Depends
 
 from app.dependencies.auth import get_current_teacher
 from app.services.predictor import predict_at_risk, predict_final
-from app.services.explainer import explain_risk_shap, explain_final_shap
+from app.services.explainer import explain_risk_shap, explain_final_shap, get_global_shap_summary
 
 router = APIRouter(
     prefix="/students",
@@ -30,6 +30,22 @@ with open(DATA_PATH, "r") as f:
 def list_students():
     return [{"student_id": sid} for sid in STUDENTS.keys()]
 
+
+# ------------------------------------------------------
+# GET /students/global/early
+# ------------------------------------------------------
+@router.get("/global/early")
+def global_early_explanations(top_k: int = Query(15, ge=5, le=30)):
+    return get_global_shap_summary("early", top_k=top_k)
+
+
+# ------------------------------------------------------
+# GET /students/global/final
+# ------------------------------------------------------
+@router.get("/global/final")
+def global_final_explanations(top_k: int = Query(15, ge=5, le=30)):
+    return get_global_shap_summary("final", top_k=top_k)
+
 # ------------------------------------------------------
 # GET /students/{student_id}
 # Full student profile (NO features, NO predictions)
@@ -50,54 +66,38 @@ def get_student(student_id: str):
     }
 
 # ------------------------------------------------------
-# GET /students/{student_id}/early
+# GET /students/{student_id}/insights
+# Combined payload for UI: prediction + local + global context
 # ------------------------------------------------------
-@router.get("/{student_id}/early")
-def early_at_risk(student_id: str):
-    if student_id not in STUDENTS:
-        raise HTTPException(status_code=404, detail="Student not found")
-
-    features = STUDENTS[student_id]["early_features"]
-
-    return {
-        "student_id": student_id,
-        "stage": "early",
-        "prediction": predict_at_risk(features),
-        "explanation": explain_risk_shap(features),
-    }
-
-# ------------------------------------------------------
-# GET /students/{student_id}/final
-# ------------------------------------------------------
-@router.get("/{student_id}/final")
-def final_outcome(student_id: str):
-    if student_id not in STUDENTS:
-        raise HTTPException(status_code=404, detail="Student not found")
-
-    features = STUDENTS[student_id]["final_features"]
-
-    return {
-        "student_id": student_id,
-        "stage": "final",
-        "prediction": predict_final(features),
-        "explanation": explain_final_shap(features),
-    }
-
-# ------------------------------------------------------
-# DEBUG ONLY — features
-# ------------------------------------------------------
-@router.get("/{student_id}/features")
-def get_student_features(
+@router.get(
+    "/{student_id}/insights",
+    summary="Student Insights (Recommended)",
+    description="Recommended endpoint for UI integration. Returns prediction, "
+                "local SHAP explanation, and global cohort context in one payload.",
+)
+def student_insights(
     student_id: str,
-    feature_type: str = Query(..., enum=["early", "final"]),
+    stage: str = Query(..., enum=["early", "final"]),
+    top_k: int = Query(10, ge=5, le=30),
 ):
     if student_id not in STUDENTS:
         raise HTTPException(status_code=404, detail="Student not found")
 
-    key = "early_features" if feature_type == "early" else "final_features"
+    if stage == "early":
+        features = STUDENTS[student_id]["early_features"]
+        prediction = predict_at_risk(features)
+        local_explanation = explain_risk_shap(features)
+    else:
+        features = STUDENTS[student_id]["final_features"]
+        prediction = predict_final(features)
+        local_explanation = explain_final_shap(features)
+
+    global_explanation = get_global_shap_summary(stage, top_k=top_k)
 
     return {
         "student_id": student_id,
-        "feature_type": feature_type,
-        "features": STUDENTS[student_id][key],
+        "stage": stage,
+        "prediction": prediction,
+        "local_explanation": local_explanation,
+        "global_context": global_explanation,
     }
